@@ -7,7 +7,7 @@ use tokio::signal;
 
 #[derive(Debug, Parser)]
 struct Opt {
-    #[clap(short, long, default_value = "enp10s0")]
+    #[clap(short, long, default_value = "enp1s0")]
     iface: String,
 }
 
@@ -31,10 +31,8 @@ async fn main() -> anyhow::Result<()> {
             warn!("failed to initialize eBPF logger: {e}");
         }
         Ok(logger) => {
-            let mut logger = tokio::io::unix::AsyncFd::with_interest(
-                logger,
-                tokio::io::Interest::READABLE,
-            )?;
+            let mut logger =
+                tokio::io::unix::AsyncFd::with_interest(logger, tokio::io::Interest::READABLE)?;
             tokio::task::spawn(async move {
                 loop {
                     let mut guard = logger.readable_mut().await.unwrap();
@@ -44,8 +42,7 @@ async fn main() -> anyhow::Result<()> {
             });
         }
     }
-    let program: &mut Xdp =
-        bpf.program_mut("xdp_firewall").unwrap().try_into()?;
+    let program: &mut Xdp = bpf.program_mut("xdp_firewall").unwrap().try_into()?;
     program.load()?;
     program.attach(&opt.iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;

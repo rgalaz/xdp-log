@@ -8,6 +8,7 @@ use core::mem;
 use network_types::{
     eth::{EthHdr, EtherType},
     ip::{IpProto, Ipv4Hdr},
+    icmp::IcmpHdr,
     tcp::TcpHdr,
     udp::UdpHdr,
 };
@@ -46,10 +47,18 @@ fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
         _ => return Ok(xdp_action::XDP_PASS),
     }
 
+
+
     let ipv4hdr: *const Ipv4Hdr = ptr_at(&ctx, EthHdr::LEN)?;
     let source_addr = u32::from_be_bytes(unsafe { (*ipv4hdr).src_addr });
 
     let source_port = match unsafe { (*ipv4hdr).proto } {
+        IpProto::Icmp => {
+            let icmphdr: *const IcmpHdr =
+                ptr_at(&ctx, EthHdr::LEN + IcmpHdr::LEN)?;
+            u16::from_be_bytes(unsafe { (*icmphdr).check })
+        }
+
         IpProto::Tcp => {
             let tcphdr: *const TcpHdr =
                 ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
